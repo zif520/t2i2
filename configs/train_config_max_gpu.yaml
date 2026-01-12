@@ -1,0 +1,68 @@
+# 最大化 GPU 显存利用配置（RTX 4090 24GB）
+
+# 数据配置
+data:
+  dataset_name: "coco"  # 或 "custom"
+  dataset_path: "./data"
+  image_size: 512  # 大图像尺寸
+  num_samples: 5000
+  train_split: 0.9
+
+# 模型配置（大模型）
+model:
+  hidden_size: 768  # 大隐藏层
+  num_layers: 16  # 更多层
+  num_heads: 12  # 更多注意力头
+  patch_size: 2
+  in_channels: 4
+  out_channels: 4
+  attention_head_dim: 64
+  mlp_ratio: 4.0
+  dropout: 0.1
+
+# VAE 配置
+vae:
+  pretrained_model_name: "runwayml/stable-diffusion-v1-5"
+  use_slicing: false  # 关闭切片
+
+# 训练配置（最大化显存利用）
+training:
+  output_dir: "./outputs"
+  seed: 42
+  batch_size: 32  # 大批次
+  gradient_accumulation_steps: 1
+  learning_rate: 0.0001
+  num_epochs: 50
+  save_steps: 500
+  logging_steps: 50
+  mixed_precision: "fp16"
+  max_grad_norm: 1.0
+  use_ema: false  # 关闭 EMA 节省显存
+  ema_decay: 0.9999
+  num_workers: 8
+  prefetch_factor: 4
+  compile_model: true  # 编译优化
+
+# 扩散调度器配置
+scheduler:
+  num_train_timesteps: 1000
+  beta_start: 0.00085
+  beta_end: 0.012
+  beta_schedule: "scaled_linear"
+  prediction_type: "epsilon"
+
+# 文本编码器配置
+text_encoder:
+  pretrained_model_name: "openai/clip-vit-base-patch32"
+
+# 优化器配置
+optimizer:
+  type: "adamw"
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+
+# 学习率调度器配置
+lr_scheduler:
+  type: "cosine"
+  warmup_steps: 500
+

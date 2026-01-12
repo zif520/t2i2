@@ -229,9 +229,10 @@ class DiTModel(nn.Module):
         self.t_embedder = TimestepEmbedder(hidden_size)
         
         # 文本条件嵌入（通过线性层投影）
-        # CLIP 输出维度可能是 512 或 768，使用自适应维度
-        self.y_embedder = None  # 将在第一次前向传播时初始化
-        self.text_embed_dim = None
+        # CLIP 输出维度通常是 512 (base) 或 768 (large)
+        # 默认使用 512，如果实际维度不同会在第一次前向传播时调整
+        self.text_embed_dim = 512  # 默认 CLIP base 的维度
+        self.y_embedder = nn.Linear(self.text_embed_dim, hidden_size)
         
         # Transformer 块
         self.blocks = nn.ModuleList([
@@ -287,20 +288,25 @@ class DiTModel(nn.Module):
         t = self.t_embedder(t)  # (B, hidden_size)
         
         # 文本条件嵌入
-        # 自适应文本嵌入维度
-        if self.y_embedder is None:
-            text_dim = y.shape[-1] if y.dim() > 1 else y.shape[0]
-            self.y_embedder = nn.Linear(text_dim, self.hidden_size).to(y.device)
-            self.text_embed_dim = text_dim
-        
-        # 如果 y 是 2D (B, seq_len, dim)，需要池化
-        if y.dim() == 2:
-            # 已经是 (B, dim) 格式
-            pass
-        elif y.dim() == 3:
+        # 如果 y 是 3D (B, seq_len, dim)，需要池化
+        if y.dim() == 3:
             # (B, seq_len, dim) -> (B, dim) 平均池化
             y = y.mean(dim=1)
+        elif y.dim() == 2:
+            # 已经是 (B, dim) 格式
+            pass
+        else:
+            raise ValueError(f"不支持的文本嵌入维度: {y.dim()}")
         
+        # 检查维度是否匹配，如果不匹配则重新创建 y_embedder（应该很少见）
+        actual_dim = y.shape[-1]
+        if actual_dim != self.text_embed_dim:
+            # 维度不匹配，需要重新创建
+            self.text_embed_dim = actual_dim
+            self.y_embedder = nn.Linear(actual_dim, self.hidden_size).to(y.device)
+        
+        # 确保张量是连续的（避免编译模式下的问题）
+        y = y.contiguous()
         y = self.y_embedder(y)  # (B, hidden_size)
         
         # 合并条件

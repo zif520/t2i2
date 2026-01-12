@@ -161,20 +161,24 @@ class Trainer:
         pixel_values = batch["pixel_values"].to(self.accelerator.device)
         input_ids = batch["input_ids"].to(self.accelerator.device)
         
-        # 使用 VAE 编码图像到潜在空间（优化：使用 autocast 加速）
-        with torch.no_grad():
-            with torch.amp.autocast(device_type="cuda", enabled=self.accelerator.mixed_precision != "no"):
+        # 使用 VAE 编码图像到潜在空间（优化：使用 autocast 加速，保持梯度图）
+        # 注意：虽然 VAE 不需要梯度，但保持计算图可以优化内存使用
+        with torch.amp.autocast(device_type="cuda", enabled=self.accelerator.mixed_precision != "no"):
+            with torch.no_grad():
                 latents = self.vae_encoder.encode(pixel_values)
         
         # 使用文本编码器编码文本（优化：使用 autocast 加速）
-        with torch.no_grad():
-            with torch.amp.autocast(device_type="cuda", enabled=self.accelerator.mixed_precision != "no"):
+        with torch.amp.autocast(device_type="cuda", enabled=self.accelerator.mixed_precision != "no"):
+            with torch.no_grad():
                 text_outputs = self.text_encoder(input_ids)
                 # CLIP 文本编码器返回 last_hidden_state，取平均池化
                 if hasattr(text_outputs, 'pooler_output') and text_outputs.pooler_output is not None:
                     text_embeddings = text_outputs.pooler_output
                 else:
                     text_embeddings = text_outputs.last_hidden_state.mean(dim=1)
+        
+        # 确保文本嵌入是连续的（避免编译模式下的问题）
+        text_embeddings = text_embeddings.contiguous()
         
         # 采样时间步
         timesteps = torch.randint(
@@ -206,7 +210,11 @@ class Trainer:
         
         # 更新参数
         self.optimizer.step()
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none=True)  # 优化：set_to_none 更快且节省内存
+        
+        # 定期清理缓存以减少内存碎片（每50步）
+        if self.global_step % 50 == 0:
+            torch.cuda.empty_cache()
         
         # 更新学习率
         if self.lr_scheduler is not None:

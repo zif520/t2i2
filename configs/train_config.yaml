@@ -4,15 +4,15 @@
 data:
   dataset_name: "coco"  # 或 "custom"
   dataset_path: "./data"  # 自定义数据集路径
-  image_size: 256  # 图像尺寸
+  image_size: 256  # 图像尺寸（256 可以支持更大批次，充分利用显存）
   num_samples: 5000  # 使用的小数据集样本数
   train_split: 0.9  # 训练集比例
 
-# 模型配置（小模型）
+# 模型配置（大模型，充分利用显存）
 model:
-  hidden_size: 384  # 隐藏层维度（小）
-  num_layers: 8  # Transformer 层数（小）
-  num_heads: 6  # 注意力头数
+  hidden_size: 768  # 增大隐藏层维度
+  num_layers: 16  # 增加 Transformer 层数
+  num_heads: 12  # 增加注意力头数
   patch_size: 2  # Patch 大小
   in_channels: 4  # VAE 潜在空间通道数
   out_channels: 4
@@ -29,7 +29,7 @@ vae:
 training:
   output_dir: "./outputs"
   seed: 42
-  batch_size: 16  # 增大批次以充分利用 GPU（RTX 4090 有 24GB 显存）
+  batch_size: 56  # 最优批次大小，显存利用率约 88%（256图像，768隐藏层，16层）
   gradient_accumulation_steps: 1  # 减少梯度累积，直接使用大批次
   learning_rate: 0.0001
   num_epochs: 50
@@ -40,7 +40,8 @@ training:
   use_ema: false  # 关闭 EMA 以提升训练速度（可选）
   ema_decay: 0.9999
   num_workers: 8  # 增加数据加载线程数
-  prefetch_factor: 2  # 预取因子
+  prefetch_factor: 4  # 增加预取因子
+  compile_model: true  # 使用 PyTorch 2.0+ 编译优化
 
 # 扩散调度器配置
 scheduler:

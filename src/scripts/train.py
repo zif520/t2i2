@@ -108,6 +108,17 @@ def main():
     )
     model = model.to(device)
     
+    # 编译模型以优化性能（PyTorch 2.0+）
+    # 注意：编译模式使用 "default" 而不是 "reduce-overhead" 以避免 CUDA graph 问题
+    if config.training.get("compile_model", False) and hasattr(torch, "compile"):
+        try:
+            logger.info("编译模型以优化性能...")
+            # 使用 "default" 模式，避免 CUDA graphs 导致的问题
+            model = torch.compile(model, mode="default")
+            logger.info("✓ 模型编译成功（使用 default 模式）")
+        except Exception as e:
+            logger.warning(f"模型编译失败，继续使用未编译版本: {e}")
+    
     # 创建训练器
     logger.info("创建训练器...")
     trainer = Trainer(
