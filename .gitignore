@@ -205,3 +205,54 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ============================================
+# DiT 项目特定忽略规则
+# ============================================
+
+# 模型文件和检查点
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.onnx
+*.pb
+*.h5
+*.hdf5
+outputs/
+checkpoints/
+checkpoint-*/
+
+# 数据文件
+data/
+datasets/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.webp
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.arrow
+
+# 训练输出和日志
+logs/
+runs/
+wandb/
+tensorboard/
+*.log
+!requirements.txt
+!README.md
+!LICENSE
+
+# Hugging Face 缓存（可选，通常很大）
+.huggingface/

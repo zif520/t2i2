@@ -1,0 +1,64 @@
+# 测试训练配置文件（极小配置，用于快速验证）
+
+# 数据配置
+data:
+  dataset_name: "custom"
+  dataset_path: "./data/test_data"
+  image_size: 256
+  num_samples: 100
+  train_split: 0.9
+
+# 模型配置（小模型）
+model:
+  hidden_size: 384
+  num_layers: 8
+  num_heads: 6
+  patch_size: 2
+  in_channels: 4
+  out_channels: 4
+  attention_head_dim: 64
+  mlp_ratio: 4.0
+  dropout: 0.1
+
+# VAE 配置
+vae:
+  pretrained_model_name: "runwayml/stable-diffusion-v1-5"  # 使用公开的 SD 1.5 模型
+  use_slicing: true
+
+# 训练配置（测试用，只训练几步）
+training:
+  output_dir: "./outputs/test"
+  seed: 42
+  batch_size: 2
+  gradient_accumulation_steps: 2
+  learning_rate: 0.0001
+  num_epochs: 1
+  save_steps: 10
+  logging_steps: 5
+  mixed_precision: "fp16"
+  max_grad_norm: 1.0
+  use_ema: false
+
+# 扩散调度器配置
+scheduler:
+  num_train_timesteps: 1000
+  beta_start: 0.00085
+  beta_end: 0.012
+  beta_schedule: "scaled_linear"
+  prediction_type: "epsilon"
+
+# 文本编码器配置
+text_encoder:
+  pretrained_model_name: "openai/clip-vit-base-patch32"
+
+# 优化器配置
+optimizer:
+  type: "adamw"
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+
+# 学习率调度器配置
+lr_scheduler:
+  type: "cosine"
+  warmup_steps: 10
+

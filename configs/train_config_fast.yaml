@@ -1,0 +1,69 @@
+# 快速训练配置（最大化 GPU 利用率，适配 RTX 4090）
+
+# 数据配置
+data:
+  dataset_name: "coco"  # 或 "custom"
+  dataset_path: "./data"  # 自定义数据集路径
+  image_size: 256  # 图像尺寸
+  num_samples: 5000  # 使用的小数据集样本数
+  train_split: 0.9  # 训练集比例
+
+# 模型配置（中等模型，充分利用 GPU）
+model:
+  hidden_size: 512          # 增大隐藏层维度
+  num_layers: 12              # 增加 Transformer 层数
+  num_heads: 8               # 增加注意力头数
+  patch_size: 2              # Patch 大小
+  in_channels: 4             # VAE 潜在空间通道数
+  out_channels: 4
+  attention_head_dim: 64
+  mlp_ratio: 4.0
+  dropout: 0.1
+
+# VAE 配置
+vae:
+  pretrained_model_name: "runwayml/stable-diffusion-v1-5"  # 使用公开的 SD 1.5 模型
+  use_slicing: false  # 关闭切片以提升速度（显存充足时）
+
+# 训练配置（优化 GPU 利用率）
+training:
+  output_dir: "./outputs"
+  seed: 42
+  batch_size: 16  # 增大批次以充分利用 GPU（RTX 4090 有 24GB 显存）
+  gradient_accumulation_steps: 1  # 减少梯度累积，直接使用大批次
+  learning_rate: 0.0001
+  num_epochs: 50
+  save_steps: 500  # 每多少步保存一次
+  logging_steps: 50  # 每多少步记录一次日志
+  mixed_precision: "fp16"  # 混合精度训练
+  max_grad_norm: 1.0  # 梯度裁剪
+  use_ema: false  # 关闭 EMA 以提升速度
+  ema_decay: 0.9999
+  num_workers: 8  # 增加数据加载线程数
+  prefetch_factor: 2  # 预取因子
+
+# 扩散调度器配置
+scheduler:
+  num_train_timesteps: 1000  # 扩散步数
+  beta_start: 0.00085
+  beta_end: 0.012
+  beta_schedule: "scaled_linear"
+  prediction_type: "epsilon"  # 预测噪声
+
+# 文本编码器配置
+text_encoder:
+  pretrained_model_name: "openai/clip-vit-base-patch32"  # 使用 CLIP 文本编码器
+
+# 优化器配置
+optimizer:
+  type: "adamw"
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+
+# 学习率调度器配置
+lr_scheduler:
+  type: "cosine"
+  warmup_steps: 500
+
+
+
