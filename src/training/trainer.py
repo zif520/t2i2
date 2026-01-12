@@ -157,18 +157,17 @@ class Trainer:
         """
         self.model.train()
         
-        # 获取数据
-        pixel_values = batch["pixel_values"].to(self.accelerator.device)
-        input_ids = batch["input_ids"].to(self.accelerator.device)
+        # 获取数据（使用非阻塞传输，已在 DataLoader 中 pin_memory）
+        pixel_values = batch["pixel_values"].to(self.accelerator.device, non_blocking=True)
+        input_ids = batch["input_ids"].to(self.accelerator.device, non_blocking=True)
         
-        # 使用 VAE 编码图像到潜在空间（优化：使用 autocast 加速，保持梯度图）
-        # 注意：虽然 VAE 不需要梯度，但保持计算图可以优化内存使用
+        # 使用统一的 autocast 上下文（优化：减少上下文切换开销）
         with torch.amp.autocast(device_type="cuda", enabled=self.accelerator.mixed_precision != "no"):
+            # VAE 编码图像到潜在空间
             with torch.no_grad():
                 latents = self.vae_encoder.encode(pixel_values)
-        
-        # 使用文本编码器编码文本（优化：使用 autocast 加速）
-        with torch.amp.autocast(device_type="cuda", enabled=self.accelerator.mixed_precision != "no"):
+            
+            # 文本编码器编码文本
             with torch.no_grad():
                 text_outputs = self.text_encoder(input_ids)
                 # CLIP 文本编码器返回 last_hidden_state，取平均池化
@@ -176,27 +175,28 @@ class Trainer:
                     text_embeddings = text_outputs.pooler_output
                 else:
                     text_embeddings = text_outputs.last_hidden_state.mean(dim=1)
-        
-        # 确保文本嵌入是连续的（避免编译模式下的问题）
-        text_embeddings = text_embeddings.contiguous()
-        
-        # 采样时间步
-        timesteps = torch.randint(
-            0,
-            self.noise_scheduler.config.num_train_timesteps,
-            (latents.shape[0],),
-            device=latents.device,
-        )
-        
-        # 添加噪声
-        noise = torch.randn_like(latents)
-        noisy_latents = self.noise_scheduler.add_noise(latents, noise, timesteps)
-        
-        # 预测噪声
-        pred_noise = self.model(noisy_latents, timesteps, text_embeddings)
-        
-        # 计算损失
-        loss = self.criterion(pred_noise, noise)
+            
+            # 确保文本嵌入是连续的（避免编译模式下的问题）
+            text_embeddings = text_embeddings.contiguous()
+            
+            # 采样时间步（在 GPU 上生成，避免 CPU-GPU 传输）
+            timesteps = torch.randint(
+                0,
+                self.noise_scheduler.config.num_train_timesteps,
+                (latents.shape[0],),
+                device=latents.device,
+                dtype=torch.long,
+            )
+            
+            # 添加噪声（使用 torch.randn_like 在 GPU 上生成）
+            noise = torch.randn_like(latents)
+            noisy_latents = self.noise_scheduler.add_noise(latents, noise, timesteps)
+            
+            # 预测噪声（在 autocast 上下文中）
+            pred_noise = self.model(noisy_latents, timesteps, text_embeddings)
+            
+            # 计算损失（在 autocast 上下文中）
+            loss = self.criterion(pred_noise, noise)
         
         # 反向传播
         self.accelerator.backward(loss)
@@ -212,8 +212,8 @@ class Trainer:
         self.optimizer.step()
         self.optimizer.zero_grad(set_to_none=True)  # 优化：set_to_none 更快且节省内存
         
-        # 定期清理缓存以减少内存碎片（每50步）
-        if self.global_step % 50 == 0:
+        # 定期清理缓存以减少内存碎片（每100步，减少频率以提升性能）
+        if self.global_step % 100 == 0:
             torch.cuda.empty_cache()
         
         # 更新学习率

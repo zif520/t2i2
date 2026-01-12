@@ -77,19 +77,20 @@ def main():
         is_train=True,
     )
     
-    # 创建数据加载器（优化 GPU 利用率）
+    # 创建数据加载器（深度优化 GPU 利用率）
     batch_size = config.training.get("batch_size", 4)
-    num_workers = config.training.get("num_workers", 4)  # 增加数据加载线程
-    prefetch_factor = config.training.get("prefetch_factor", 2)  # 预取因子
+    num_workers = config.training.get("num_workers", 8)  # 增加数据加载线程
+    prefetch_factor = config.training.get("prefetch_factor", 4)  # 增加预取因子
     
     train_dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        pin_memory=True,
-        prefetch_factor=prefetch_factor,
-        persistent_workers=True if num_workers > 0 else False,  # 保持 worker 进程
+        pin_memory=True,  # 加速 CPU-GPU 传输
+        prefetch_factor=prefetch_factor,  # 预取更多批次
+        persistent_workers=True if num_workers > 0 else False,  # 保持 worker 进程，减少创建开销
+        drop_last=True,  # 丢弃最后不完整的批次，确保批次大小一致
     )
     
     # 创建模型
