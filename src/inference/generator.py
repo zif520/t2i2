@@ -129,9 +129,14 @@ class ImageGenerator:
             (1, 4, latent_height, latent_width),
             device=self.device,
         )
+        # 应用 scaling_factor（与训练时编码的缩放一致）
+        # 训练时：latent = latent * scaling_factor
+        # 推理时：初始噪声也需要按相同方式缩放
+        scaling_factor = self.vae_decoder.vae.config.scaling_factor
+        latents = latents * scaling_factor
         
         # 扩散采样循环
-        for t in self.scheduler.timesteps:
+        for i, t in enumerate(self.scheduler.timesteps):
             # Classifier-Free Guidance (CFG)
             if guidance_scale > 1.0:
                 # 条件预测（有文本条件）
