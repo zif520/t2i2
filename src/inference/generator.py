@@ -3,7 +3,7 @@
 import sys
 import torch
 from diffusers import DDPMScheduler, DDIMScheduler
-from typing import Optional, List
+from typing import Optional, List, Any
 from PIL import Image
 import numpy as np
 from pathlib import Path
@@ -14,7 +14,7 @@ if str(Path(__file__).parent.parent.parent) not in sys.path:
 
 from src.models.dit_model import DiTModel
 from src.models.vae_model import VAEDecoder
-from src.utils.visualization import tensor_to_pil_image, denormalize_image
+from src.utils.visualization import tensor_to_pil_image
 
 
 class ImageGenerator:
@@ -112,7 +112,13 @@ class ImageGenerator:
         
         text_outputs = self.text_encoder(text_inputs.input_ids)
         # CLIP 文本编码器返回 last_hidden_state，取平均池化
-        text_embeddings = text_outputs.last_hidden_state.mean(dim=1)  # (B, 768)
+        if hasattr(text_outputs, 'pooler_output') and text_outputs.pooler_output is not None:
+            text_embeddings = text_outputs.pooler_output
+        else:
+            text_embeddings = text_outputs.last_hidden_state.mean(dim=1)
+        
+        # 确保文本嵌入是连续的
+        text_embeddings = text_embeddings.contiguous()
         
         # 计算潜在空间尺寸
         latent_height = height // 8
@@ -139,9 +145,12 @@ class ImageGenerator:
         # 使用 VAE 解码
         images = self.vae_decoder.decode(latents)
         
+        # VAE 解码后的图像值范围是 [-1, 1]，需要转换到 [0, 1]
+        images = (images + 1.0) / 2.0  # 从 [-1, 1] 到 [0, 1]
+        images = images.clamp(0, 1)
+        
         # 转换为 PIL 图像
-        images = denormalize_image(images[0])
-        image = tensor_to_pil_image(images)
+        image = tensor_to_pil_image(images[0])
         
         return image
     

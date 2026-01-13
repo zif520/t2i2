@@ -29,7 +29,7 @@ vae:
 training:
   output_dir: "./outputs"
   seed: 42
-  batch_size: 56  # 最优批次大小（测试结果：显存利用率89.9%，吞吐量874样本/s）
+  batch_size: 96  # 最优批次大小（显存利用率83.6%，充分利用24GB显存）
   gradient_accumulation_steps: 1  # 减少梯度累积，直接使用大批次
   learning_rate: 0.0001
   num_epochs: 200

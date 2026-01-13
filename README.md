@@ -14,7 +14,14 @@
 
 完整的教程文档位于 `docs/` 目录：
 
-- [文档首页](./docs/README.md) - 文档导航和快速开始
+### 🎯 核心教程（推荐从这里开始）
+
+- **[完整教程](./docs/00-完整教程.md)** ⭐ - 完整学习路径，包含所有内容
+- **[快速开始](./docs/QUICK_START.md)** ⭐ - 5分钟快速上手
+
+### 📖 详细文档
+
+- [文档首页](./docs/README.md) - 文档导航
 - [01. 入门指南](./docs/01-入门指南.md) - 了解文生图和 DiT 基础概念
 - [02. 环境配置](./docs/02-环境配置.md) - 安装和配置开发环境
 - [03. 数据准备](./docs/03-数据准备.md) - 准备训练数据集
@@ -24,54 +31,41 @@
 - [07. 常见问题](./docs/07-常见问题.md) - FAQ 和故障排除
 - [08. 进阶学习](./docs/08-进阶学习.md) - 进阶内容和扩展方向
 
+### 📊 性能优化文档
+
+- [性能优化报告](./PERFORMANCE_OPTIMIZATION.md) - 性能优化详细说明
+- [优化总结](./OPTIMIZATION_SUMMARY.md) - 优化总结
+- [GPU 优化说明](./GPU_OPTIMIZATION.md) - GPU 利用率优化
+- [训练指南](./docs/TRAINING_GUIDE.md) - Epoch 数选择指南
+- [精度指南](./docs/PRECISION_GUIDE.md) - FP16 vs BF16
+
 ## 🚀 快速开始
 
-### 1. 安装环境
+### 5 分钟快速上手
 
 ```bash
-# 创建虚拟环境（推荐）
-conda create -n dit python=3.10
-conda activate dit
-
-# 安装依赖
+# 1. 安装依赖
 pip install -r requirements.txt
-```
 
-详细步骤请参考 [环境配置](./docs/02-环境配置.md)。
-
-### 2. 准备数据
-
-```bash
-# 准备 COCO 子集（示例数据）
+# 2. 准备测试数据
 python src/scripts/prepare_data.py \
     --type coco \
-    --output ./data/coco_subset \
-    --num_samples 5000
-```
+    --output ./data/test_data \
+    --num_samples 100
 
-详细步骤请参考 [数据准备](./docs/03-数据准备.md)。
-
-### 3. 开始训练
-
-```bash
-# 使用默认配置训练
+# 3. 开始训练
 python src/scripts/train.py --config configs/train_config.yaml
-```
 
-详细步骤请参考 [训练流程](./docs/05-训练流程.md)。
-
-### 4. 生成图像
-
-```bash
-# 使用训练好的模型生成图像
+# 4. 生成图像
 python src/scripts/inference.py \
-    --config configs/train_config.yaml \
     --checkpoint ./outputs/checkpoint-5000 \
-    --prompt "a cat sitting on a chair" \
-    --output ./outputs/generated
+    --prompt "a cat sitting on a chair"
 ```
 
-详细步骤请参考 [推理使用](./docs/06-推理使用.md)。
+**详细教程：**
+- 📖 [完整教程](./docs/00-完整教程.md) - 系统学习路径
+- ⚡ [快速开始](./docs/QUICK_START.md) - 5分钟快速上手
+- 📚 [文档索引](./docs/INDEX.md) - 所有文档导航
 
 ## 📁 项目结构
 
@@ -180,7 +174,10 @@ t2i2/
 - CUDA 不可用
 - 显存不足
 - 训练速度慢
-- 生成质量差
+- **生成质量差** - 查看 [图像质量改进](./docs/IMAGE_QUALITY_IMPROVEMENT.md) 或 [快速改进](./QUICK_IMPROVEMENT.md)
+- **断点续传** - 查看 [断点续传指南](./docs/RESUME_TRAINING.md)
+- **磁盘空间不足** - 查看 [磁盘空间问题](./docs/DISK_SPACE_ISSUE.md)
+- **临时目录错误** - 查看 [临时目录修复](./docs/TEMP_DIR_FIX.md)
 
 ## 📝 许可证
 

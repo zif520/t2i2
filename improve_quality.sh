@@ -1,0 +1,21 @@
+#!/bin/bash
+# 图像质量改进脚本
+
+echo "=== 图像质量改进指南 ==="
+echo ""
+echo "当前训练状态："
+echo "  - 已完成: 118 epochs / 200 epochs (59%)"
+echo "  - 建议: 继续训练到 200 epochs"
+echo ""
+echo "快速改进方案："
+echo ""
+echo "1. 继续训练（推荐）"
+echo "   ./run_train.sh --config configs/train_config.yaml --resume ./outputs/checkpoint-epoch-118"
+echo ""
+echo "2. 使用更多推理步数"
+echo "   ./run_inference.sh --checkpoint ./outputs/checkpoint-epoch-118 --prompt 'your prompt' --num_inference_steps 100"
+echo ""
+echo "3. 优化提示词"
+echo "   使用更具体、详细的描述"
+echo ""
+echo "详细说明请查看: docs/IMAGE_QUALITY_IMPROVEMENT.md"

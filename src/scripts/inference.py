@@ -1,13 +1,32 @@
 """推理脚本"""
 
 import argparse
+import os
 import sys
-import torch
 from pathlib import Path
+
+# 在导入 torch 之前设置临时目录（如果系统临时目录不可用）
+project_root = Path(__file__).parent.parent.parent
+if not os.environ.get("TMPDIR"):
+    # 使用 outputs 目录下的 tmp 子目录
+    tmp_dir = project_root / "outputs" / "tmp"
+    try:
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        os.environ["TMPDIR"] = str(tmp_dir.absolute())
+        os.environ["TMP"] = str(tmp_dir.absolute())
+        os.environ["TEMP"] = str(tmp_dir.absolute())
+    except (OSError, PermissionError):
+        # 如果无法创建，尝试使用 outputs 目录本身
+        outputs_dir = project_root / "outputs"
+        os.environ["TMPDIR"] = str(outputs_dir.absolute())
+        os.environ["TMP"] = str(outputs_dir.absolute())
+        os.environ["TEMP"] = str(outputs_dir.absolute())
+
+# 现在可以安全导入 torch
+import torch
 from transformers import CLIPTextModel, CLIPTokenizer
 
 # 添加项目根目录到路径，支持直接运行脚本
-project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.models.dit_model import DiTModel
@@ -83,6 +102,10 @@ def main():
     
     # 加载文本编码器
     logger.info("加载文本编码器...")
+    # 设置下载超时（通过环境变量）
+    import os
+    os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
+    
     text_encoder_name = config.text_encoder.get("pretrained_model_name", "openai/clip-vit-base-patch32")
     text_encoder = CLIPTextModel.from_pretrained(text_encoder_name)
     text_encoder = text_encoder.to(device)
@@ -121,7 +144,20 @@ def main():
     if not checkpoint_path.exists():
         checkpoint_path = Path(args.checkpoint)
     
-    model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    state_dict = torch.load(checkpoint_path, map_location=device)
+    
+    # 处理 torch.compile 编译后的键名（移除 _orig_mod. 前缀）
+    if any(k.startswith("_orig_mod.") for k in state_dict.keys()):
+        logger.info("检测到编译后的模型，移除 _orig_mod. 前缀")
+        new_state_dict = {}
+        for k, v in state_dict.items():
+            if k.startswith("_orig_mod."):
+                new_state_dict[k[10:]] = v  # 移除 "_orig_mod." 前缀
+            else:
+                new_state_dict[k] = v
+        state_dict = new_state_dict
+    
+    model.load_state_dict(state_dict)
     logger.info("模型加载完成")
     
     # 创建生成器
@@ -161,4 +197,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

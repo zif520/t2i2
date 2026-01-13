@@ -1,14 +1,31 @@
 """数据准备脚本"""
 
 import argparse
+import os
 import sys
 import json
 from pathlib import Path
+
+# 在导入其他库之前设置临时目录（如果系统临时目录不可用）
+project_root = Path(__file__).parent.parent.parent
+if not os.environ.get("TMPDIR"):
+    # 使用 outputs 目录下的 tmp 子目录
+    tmp_dir = project_root / "outputs" / "tmp"
+    try:
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        os.environ["TMPDIR"] = str(tmp_dir)
+        os.environ["TMP"] = str(tmp_dir)
+        os.environ["TEMP"] = str(tmp_dir)
+    except (OSError, PermissionError):
+        # 如果无法创建，尝试使用 outputs 目录本身
+        os.environ["TMPDIR"] = str(project_root / "outputs")
+        os.environ["TMP"] = str(project_root / "outputs")
+        os.environ["TEMP"] = str(project_root / "outputs")
+
 from PIL import Image
 from tqdm import tqdm
 
 # 添加项目根目录到路径，支持直接运行脚本
-project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 

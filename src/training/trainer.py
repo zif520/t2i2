@@ -226,16 +226,22 @@ class Trainer:
         return {"loss": loss.item()}
     
     def train(self):
-        """执行训练循环"""
+        """执行训练循环（支持断点续传）"""
         num_epochs = self.config.training.get("num_epochs", 50)
         save_steps = self.config.training.get("save_steps", 500)
         logging_steps = self.config.training.get("logging_steps", 50)
         output_dir = Path(self.config.training.get("output_dir", "./outputs"))
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        self.logger.info(f"开始训练，共 {num_epochs} 个 epoch")
+        # 如果从检查点恢复，从恢复的 epoch 继续
+        start_epoch = self.current_epoch
+        if start_epoch > 0:
+            self.logger.info(f"从 Epoch {start_epoch + 1} 继续训练（断点续传）")
+            self.logger.info(f"剩余训练: {num_epochs - start_epoch - 1} 个 epoch")
+        else:
+            self.logger.info(f"开始训练，共 {num_epochs} 个 epoch")
         
-        for epoch in range(num_epochs):
+        for epoch in range(start_epoch, num_epochs):
             self.current_epoch = epoch
             self.model.train()
             
@@ -310,6 +316,13 @@ class Trainer:
                 checkpoint_dir / "ema_model.pt",
             )
         
+        # 保存学习率调度器状态（如果有）
+        if self.lr_scheduler is not None:
+            torch.save(
+                self.lr_scheduler.state_dict(),
+                checkpoint_dir / "scheduler.pt",
+            )
+        
         # 保存训练状态
         training_state = {
             "global_step": self.global_step,
@@ -322,7 +335,7 @@ class Trainer:
     
     def load_checkpoint(self, checkpoint_dir: Path):
         """
-        加载检查点
+        加载检查点（支持断点续传）
         
         Args:
             checkpoint_dir: 检查点目录
@@ -333,14 +346,46 @@ class Trainer:
         model_path = checkpoint_dir / "model.pt"
         if model_path.exists():
             unwrapped_model = self.accelerator.unwrap_model(self.model)
-            unwrapped_model.load_state_dict(torch.load(model_path))
-            self.logger.info(f"模型已从 {model_path} 加载")
+            state_dict = torch.load(model_path, map_location=self.accelerator.device)
+            
+            # 处理 torch.compile 编译后的键名（移除 _orig_mod. 前缀）
+            if any(k.startswith("_orig_mod.") for k in state_dict.keys()):
+                self.logger.info("检测到编译后的模型，移除 _orig_mod. 前缀")
+                new_state_dict = {}
+                for k, v in state_dict.items():
+                    if k.startswith("_orig_mod."):
+                        new_state_dict[k[10:]] = v  # 移除 "_orig_mod." 前缀
+                    else:
+                        new_state_dict[k] = v
+                state_dict = new_state_dict
+            
+            unwrapped_model.load_state_dict(state_dict)
+            self.logger.info(f"✓ 模型已从 {model_path} 加载")
+        else:
+            self.logger.warning(f"模型文件不存在: {model_path}")
         
         # 加载优化器
         optimizer_path = checkpoint_dir / "optimizer.pt"
         if optimizer_path.exists():
-            self.optimizer.load_state_dict(torch.load(optimizer_path))
-            self.logger.info(f"优化器已从 {optimizer_path} 加载")
+            optimizer_state = torch.load(optimizer_path, map_location=self.accelerator.device)
+            self.optimizer.load_state_dict(optimizer_state)
+            self.logger.info(f"✓ 优化器已从 {optimizer_path} 加载")
+        else:
+            self.logger.warning(f"优化器文件不存在: {optimizer_path}")
+        
+        # 加载学习率调度器状态（如果有）
+        scheduler_path = checkpoint_dir / "scheduler.pt"
+        if scheduler_path.exists() and self.lr_scheduler is not None:
+            scheduler_state = torch.load(scheduler_path, map_location=self.accelerator.device)
+            self.lr_scheduler.load_state_dict(scheduler_state)
+            self.logger.info(f"✓ 学习率调度器已从 {scheduler_path} 加载")
+        
+        # 加载 EMA 模型（如果有）
+        ema_path = checkpoint_dir / "ema_model.pt"
+        if ema_path.exists() and self.use_ema and self.ema_model is not None:
+            ema_state = torch.load(ema_path, map_location=self.accelerator.device)
+            self.ema_model.load_state_dict(ema_state)
+            self.logger.info(f"✓ EMA 模型已从 {ema_path} 加载")
         
         # 加载训练状态
         state_path = checkpoint_dir / "training_state.json"
@@ -349,5 +394,17 @@ class Trainer:
                 training_state = json.load(f)
             self.global_step = training_state.get("global_step", 0)
             self.current_epoch = training_state.get("current_epoch", 0)
-            self.logger.info(f"训练状态已从 {state_path} 加载")
+            self.logger.info(f"✓ 训练状态已从 {state_path} 加载")
+            self.logger.info(f"  恢复位置: Epoch {self.current_epoch + 1}, Step {self.global_step}")
+        else:
+            self.logger.warning(f"训练状态文件不存在: {state_path}，将从 epoch 0 开始")
+            # 尝试从检查点目录名推断 epoch
+            checkpoint_name = checkpoint_dir.name
+            if "epoch-" in checkpoint_name:
+                try:
+                    epoch_num = int(checkpoint_name.split("epoch-")[1])
+                    self.current_epoch = epoch_num - 1  # epoch 从 0 开始
+                    self.logger.info(f"从检查点名称推断: epoch {epoch_num}")
+                except ValueError:
+                    pass
 

@@ -1,9 +1,13 @@
 """VAE 模型模块（使用预训练 VAE）"""
 
+import os
 import torch
 import torch.nn as nn
 from diffusers import AutoencoderKL
 from typing import Optional
+
+# 设置下载超时（通过环境变量）
+os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
 
 
 class VAEEncoder:
