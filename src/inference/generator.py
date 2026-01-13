@@ -132,12 +132,33 @@ class ImageGenerator:
         
         # 扩散采样循环
         for t in self.scheduler.timesteps:
-            # 预测噪声
-            noise_pred = self.model(
-                latents,
-                t.unsqueeze(0).to(self.device),
-                text_embeddings,
-            )
+            # Classifier-Free Guidance (CFG)
+            if guidance_scale > 1.0:
+                # 条件预测（有文本条件）
+                noise_pred_cond = self.model(
+                    latents,
+                    t.unsqueeze(0).to(self.device),
+                    text_embeddings,
+                )
+                
+                # 无条件预测（空文本条件）
+                # 创建空文本嵌入（全零）
+                uncond_embeddings = torch.zeros_like(text_embeddings)
+                noise_pred_uncond = self.model(
+                    latents,
+                    t.unsqueeze(0).to(self.device),
+                    uncond_embeddings,
+                )
+                
+                # CFG: 引导预测 = 无条件预测 + guidance_scale * (条件预测 - 无条件预测)
+                noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_cond - noise_pred_uncond)
+            else:
+                # 不使用 CFG
+                noise_pred = self.model(
+                    latents,
+                    t.unsqueeze(0).to(self.device),
+                    text_embeddings,
+                )
             
             # 调度器步骤
             latents = self.scheduler.step(noise_pred, t, latents).prev_sample
