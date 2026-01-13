@@ -387,28 +387,41 @@ class Trainer:
         else:
             self.logger.warning(f"模型文件不存在: {model_path}")
         
-        # 加载优化器
+        # 加载优化器（如果文件损坏，跳过并重新初始化）
         optimizer_path = checkpoint_dir / "optimizer.pt"
         if optimizer_path.exists():
-            optimizer_state = torch.load(optimizer_path, map_location=self.accelerator.device)
-            self.optimizer.load_state_dict(optimizer_state)
-            self.logger.info(f"✓ 优化器已从 {optimizer_path} 加载")
+            try:
+                optimizer_state = torch.load(optimizer_path, map_location=self.accelerator.device)
+                self.optimizer.load_state_dict(optimizer_state)
+                self.logger.info(f"✓ 优化器已从 {optimizer_path} 加载")
+            except (RuntimeError, OSError, EOFError) as e:
+                self.logger.warning(f"优化器文件损坏或无法读取: {optimizer_path}")
+                self.logger.warning(f"错误: {e}")
+                self.logger.warning("将使用新初始化的优化器（训练会继续，但优化器状态会重置）")
         else:
-            self.logger.warning(f"优化器文件不存在: {optimizer_path}")
+            self.logger.warning(f"优化器文件不存在: {optimizer_path}，将使用新初始化的优化器")
         
-        # 加载学习率调度器状态（如果有）
+        # 加载学习率调度器状态（如果有，文件损坏时跳过）
         scheduler_path = checkpoint_dir / "scheduler.pt"
         if scheduler_path.exists() and self.lr_scheduler is not None:
-            scheduler_state = torch.load(scheduler_path, map_location=self.accelerator.device)
-            self.lr_scheduler.load_state_dict(scheduler_state)
-            self.logger.info(f"✓ 学习率调度器已从 {scheduler_path} 加载")
+            try:
+                scheduler_state = torch.load(scheduler_path, map_location=self.accelerator.device)
+                self.lr_scheduler.load_state_dict(scheduler_state)
+                self.logger.info(f"✓ 学习率调度器已从 {scheduler_path} 加载")
+            except (RuntimeError, OSError, EOFError) as e:
+                self.logger.warning(f"调度器文件损坏或无法读取: {scheduler_path}")
+                self.logger.warning("将使用新初始化的调度器")
         
-        # 加载 EMA 模型（如果有）
+        # 加载 EMA 模型（如果有，文件损坏时跳过）
         ema_path = checkpoint_dir / "ema_model.pt"
         if ema_path.exists() and self.use_ema and self.ema_model is not None:
-            ema_state = torch.load(ema_path, map_location=self.accelerator.device)
-            self.ema_model.load_state_dict(ema_state)
-            self.logger.info(f"✓ EMA 模型已从 {ema_path} 加载")
+            try:
+                ema_state = torch.load(ema_path, map_location=self.accelerator.device)
+                self.ema_model.load_state_dict(ema_state)
+                self.logger.info(f"✓ EMA 模型已从 {ema_path} 加载")
+            except (RuntimeError, OSError, EOFError) as e:
+                self.logger.warning(f"EMA 模型文件损坏或无法读取: {ema_path}")
+                self.logger.warning("将使用新初始化的 EMA 模型")
         
         # 加载训练状态
         state_path = checkpoint_dir / "training_state.json"
