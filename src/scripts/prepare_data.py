@@ -33,6 +33,9 @@ def prepare_coco_subset(output_dir: str, num_samples: int = 5000):
     """
     准备 COCO 数据集子集
     
+    注意: 此函数尝试从 Hugging Face 下载真实的 COCO 数据。
+    如果下载失败，会提示用户手动准备数据。
+    
     Args:
         output_dir: 输出目录
         num_samples: 样本数量
@@ -46,42 +49,123 @@ def prepare_coco_subset(output_dir: str, num_samples: int = 5000):
     metadata = []
     
     print(f"准备 {num_samples} 个样本...")
-    print("注意: 此脚本创建示例数据结构。实际使用时请替换为真实数据。")
+    print("尝试从 Hugging Face 下载真实的 COCO 数据集...")
     
-    # 创建示例数据
-    dummy_texts = [
-        "a beautiful landscape with mountains",
-        "a cat sitting on a chair",
-        "a red car on the street",
-        "a person walking in the park",
-        "a building with windows",
-        "a dog playing in the yard",
-        "a sunset over the ocean",
-        "a flower in a garden",
-    ]
-    
-    for i in tqdm(range(num_samples)):
-        # 创建示例图像（实际使用时应该加载真实图像）
-        image = Image.new("RGB", (256, 256), color=(128, 128, 128))
-        image_path = images_dir / f"image_{i:06d}.jpg"
-        image.save(image_path)
+    # 尝试从 Hugging Face 加载真实的 COCO 数据
+    try:
+        from datasets import load_dataset
+        import os
+        os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "120")
         
-        text = dummy_texts[i % len(dummy_texts)]
-        metadata.append({
-            "image": f"images/image_{i:06d}.jpg",
-            "text": text,
-        })
+        print("正在下载 COCO 数据集（这可能需要一些时间）...")
+        # 尝试多个 COCO 数据集源
+        coco_sources = [
+            "detection-datasets/coco_2017_val_panoptic",
+            "HuggingFaceM4/COCO",
+            "coco",
+        ]
+        
+        dataset = None
+        for source in coco_sources:
+            try:
+                print(f"尝试从 {source} 加载...")
+                dataset = load_dataset(source, split="train", streaming=False)
+                print(f"✅ 成功从 {source} 加载数据集")
+                break
+            except Exception as e:
+                print(f"  ❌ 失败: {e}")
+                continue
+        
+        if dataset is None:
+            raise Exception("无法从任何源加载 COCO 数据集")
+        
+        print(f"数据集包含 {len(dataset)} 个样本")
+        
+        # 加载真实图像和文本
+        count = 0
+        for i, item in enumerate(tqdm(dataset, desc="处理图像")):
+            if count >= num_samples:
+                break
+            
+            try:
+                # 尝试不同的字段名
+                image = None
+                caption = None
+                
+                if "image" in item:
+                    image = item["image"]
+                elif "img" in item:
+                    image = item["img"]
+                
+                if "caption" in item:
+                    caption = item["caption"]
+                elif "captions" in item:
+                    captions = item["captions"]
+                    caption = captions[0] if isinstance(captions, list) else captions
+                elif "text" in item:
+                    caption = item["text"]
+                
+                if image is None or caption is None:
+                    continue
+                
+                # 确保图像是 PIL Image
+                if not isinstance(image, Image.Image):
+                    if hasattr(image, 'convert'):
+                        image = image.convert("RGB")
+                    else:
+                        continue
+                
+                # 调整图像大小
+                image = image.resize((256, 256), Image.Resampling.LANCZOS)
+                
+                # 保存图像
+                image_path = images_dir / f"image_{count:06d}.jpg"
+                image.save(image_path, quality=95)
+                
+                # 保存元数据
+                metadata.append({
+                    "image": f"images/image_{count:06d}.jpg",
+                    "text": str(caption),
+                })
+                
+                count += 1
+                
+            except Exception as e:
+                print(f"处理样本 {i} 时出错: {e}")
+                continue
+        
+        if count == 0:
+            raise Exception("无法从数据集中提取任何有效样本")
+        
+        print(f"成功处理 {count} 个真实 COCO 样本")
+        
+    except Exception as e:
+        print(f"\n❌ 无法下载真实的 COCO 数据集: {e}")
+        print("\n" + "="*60)
+        print("请使用以下方法之一获取真实数据:")
+        print("="*60)
+        print("\n方法1: 手动下载 COCO 数据集")
+        print("  1. 访问 https://cocodataset.org/")
+        print("  2. 下载 COCO 2017 训练集图像和标注")
+        print("  3. 使用 prepare_custom_data() 函数处理")
+        print("\n方法2: 使用其他数据源")
+        print("  1. 准备图像和对应的文本描述")
+        print("  2. 使用 --type custom 选项")
+        print("\n方法3: 使用现有的真实数据集")
+        print("  如果有其他图像-文本对数据集，可以使用")
+        print("="*60)
+        raise
     
     # 保存元数据
     metadata_path = output_dir / "metadata.json"
     with open(metadata_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2, ensure_ascii=False)
     
-    print(f"数据准备完成！")
+    print(f"\n✅ 数据准备完成！")
     print(f"输出目录: {output_dir}")
     print(f"元数据文件: {metadata_path}")
     print(f"图像目录: {images_dir}")
-    print(f"共 {len(metadata)} 个样本")
+    print(f"共 {len(metadata)} 个真实样本")
 
 
 def prepare_custom_data(

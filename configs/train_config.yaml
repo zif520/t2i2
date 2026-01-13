@@ -32,7 +32,7 @@ training:
   batch_size: 96  # 最优批次大小（显存利用率83.6%，充分利用24GB显存）
   gradient_accumulation_steps: 1  # 减少梯度累积，直接使用大批次
   learning_rate: 0.0001
-  num_epochs: 200
+  num_epochs: 1000
   save_steps: 500  # 每多少步保存一次
   save_every_n_epochs: 10  # 每 10 个 epoch 保存一次（节省磁盘空间）
   logging_steps: 50  # 每多少步记录一次日志

@@ -1,46 +1,57 @@
-# 快速修复：Hugging Face 下载超时
+# 快速修复 Hugging Face 下载超时
 
-## 🚀 立即解决方案
+## 🔍 问题
 
-### 方法1: 使用镜像源（最快）⭐
+训练时遇到 Hugging Face 下载超时：
+```
+ReadTimeoutError: HTTPSConnectionPool(host='huggingface.co', port=443): Read timed out. (read timeout=10)
+```
+
+## ✅ 解决方案
+
+### 方法1: 使用镜像（推荐，最快）
 
 ```bash
-# 设置镜像源
+# 设置镜像和超时
 export HF_ENDPOINT=https://hf-mirror.com
+export HF_HUB_DOWNLOAD_TIMEOUT=300
 
-# 重新运行
-./run_inference.sh --checkpoint ./outputs/checkpoint-epoch-118 --prompt "a cat"
+# 然后运行训练
+python src/scripts/train.py --config configs/train_config.yaml
 ```
 
-### 方法2: 使用设置脚本
-
+或者使用脚本：
 ```bash
-# 运行设置脚本
 source setup_hf_mirror.sh
-
-# 然后运行推理
-./run_inference.sh --checkpoint ./outputs/checkpoint-epoch-118 --prompt "a cat"
+python src/scripts/train.py --config configs/train_config.yaml
 ```
 
-### 方法3: 永久设置（推荐）
+### 方法2: 只增加超时时间
 
 ```bash
-# 添加到 ~/.bashrc
-echo 'export HF_ENDPOINT=https://hf-mirror.com' >> ~/.bashrc
-source ~/.bashrc
+export HF_HUB_DOWNLOAD_TIMEOUT=300
+python src/scripts/train.py --config configs/train_config.yaml
 ```
 
-## ✅ 已修复的代码
+### 方法3: 在训练脚本中设置（已修复）
 
-代码已更新，通过环境变量 `HF_HUB_DOWNLOAD_TIMEOUT` 设置超时时间：
+代码已更新，会自动设置超时为 300 秒。如果仍然超时，使用方法1（镜像）。
 
-- ✅ `src/scripts/inference.py` - 设置超时环境变量
-- ✅ `src/scripts/train.py` - 设置超时环境变量
-- ✅ `src/models/vae_model.py` - 设置超时环境变量
+## 📝 已修复的文件
 
-**注意**：`timeout` 参数不能直接传递给 `from_pretrained`，需要通过环境变量设置。
+- ✅ `src/scripts/train.py` - 超时增加到 300 秒
+- ✅ `src/models/vae_model.py` - 超时增加到 300 秒
+- ✅ `setup_hf_mirror.sh` - 超时增加到 300 秒
 
-## 📝 详细说明
+## 🚀 立即使用
 
-完整解决方案请查看：[Hugging Face 超时修复指南](./docs/HUGGINGFACE_TIMEOUT_FIX.md)
+```bash
+# 使用镜像（推荐）
+source setup_hf_mirror.sh
+python src/scripts/train.py --config configs/train_config.yaml
+```
 
+---
+
+**状态**: ✅ 已修复  
+**建议**: 使用镜像可以显著提升下载速度

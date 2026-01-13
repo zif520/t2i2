@@ -7,7 +7,7 @@ from diffusers import AutoencoderKL
 from typing import Optional
 
 # 设置下载超时（通过环境变量）
-os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
+os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "300")  # 增加到 300 秒
 
 
 class VAEEncoder:

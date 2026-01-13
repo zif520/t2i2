@@ -142,7 +142,7 @@ def main():
 
     # 设置下载超时（通过环境变量或 download_config）
     import os
-    os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
+    os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "300")  # 增加到 300 秒（5分钟）
     
     text_encoder = CLIPTextModel.from_pretrained(text_encoder_name)
 
