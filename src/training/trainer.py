@@ -280,8 +280,13 @@ class Trainer:
             avg_loss = epoch_loss / num_steps
             self.logger.info(f"Epoch {epoch+1} 完成，平均损失: {avg_loss:.4f}")
             
-            # 保存 epoch 检查点
-            self.save_checkpoint(output_dir / f"checkpoint-epoch-{epoch+1}")
+            # 保存 epoch 检查点（根据配置的频率保存）
+            save_every_n_epochs = self.config.training.get("save_every_n_epochs", 1)
+            if (epoch + 1) % save_every_n_epochs == 0 or epoch == num_epochs - 1:
+                try:
+                    self.save_checkpoint(output_dir / f"checkpoint-epoch-{epoch+1}")
+                except Exception as e:
+                    self.logger.error(f"保存检查点失败，但继续训练: {e}")
         
         self.logger.info("训练完成！")
         # 保存最终模型
@@ -294,44 +299,62 @@ class Trainer:
         Args:
             checkpoint_dir: 检查点目录
         """
-        checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 保存模型
-        unwrapped_model = self.accelerator.unwrap_model(self.model)
-        torch.save(
-            unwrapped_model.state_dict(),
-            checkpoint_dir / "model.pt",
-        )
-        
-        # 保存优化器
-        torch.save(
-            self.optimizer.state_dict(),
-            checkpoint_dir / "optimizer.pt",
-        )
-        
-        # 保存 EMA 模型
-        if self.use_ema and self.ema_model is not None:
+        try:
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 保存模型
+            unwrapped_model = self.accelerator.unwrap_model(self.model)
+            model_path = checkpoint_dir / "model.pt"
             torch.save(
-                self.ema_model.state_dict(),
-                checkpoint_dir / "ema_model.pt",
+                unwrapped_model.state_dict(),
+                model_path,
             )
-        
-        # 保存学习率调度器状态（如果有）
-        if self.lr_scheduler is not None:
-            torch.save(
-                self.lr_scheduler.state_dict(),
-                checkpoint_dir / "scheduler.pt",
-            )
-        
-        # 保存训练状态
-        training_state = {
-            "global_step": self.global_step,
-            "current_epoch": self.current_epoch,
-        }
-        with open(checkpoint_dir / "training_state.json", "w") as f:
-            json.dump(training_state, f, indent=2)
-        
-        self.logger.info(f"检查点已保存到: {checkpoint_dir}")
+            
+            # 保存优化器（如果空间允许）
+            try:
+                optimizer_path = checkpoint_dir / "optimizer.pt"
+                torch.save(
+                    self.optimizer.state_dict(),
+                    optimizer_path,
+                )
+            except (RuntimeError, OSError) as e:
+                self.logger.warning(f"保存优化器失败（可能磁盘空间不足）: {e}")
+                # 继续保存其他内容
+            
+            # 保存 EMA 模型（如果启用）
+            if self.use_ema and self.ema_model is not None:
+                try:
+                    torch.save(
+                        self.ema_model.state_dict(),
+                        checkpoint_dir / "ema_model.pt",
+                    )
+                except (RuntimeError, OSError) as e:
+                    self.logger.warning(f"保存 EMA 模型失败: {e}")
+            
+            # 保存学习率调度器状态（如果有）
+            if self.lr_scheduler is not None:
+                try:
+                    torch.save(
+                        self.lr_scheduler.state_dict(),
+                        checkpoint_dir / "scheduler.pt",
+                    )
+                except (RuntimeError, OSError) as e:
+                    self.logger.warning(f"保存调度器失败: {e}")
+            
+            # 保存训练状态（JSON 文件很小，应该没问题）
+            training_state = {
+                "global_step": self.global_step,
+                "current_epoch": self.current_epoch,
+            }
+            with open(checkpoint_dir / "training_state.json", "w") as f:
+                json.dump(training_state, f, indent=2)
+            
+            self.logger.info(f"检查点已保存到: {checkpoint_dir}")
+            
+        except (RuntimeError, OSError) as e:
+            self.logger.error(f"保存检查点失败: {e}")
+            self.logger.error("可能原因: 磁盘空间不足")
+            # 不抛出异常，继续训练
     
     def load_checkpoint(self, checkpoint_dir: Path):
         """

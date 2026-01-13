@@ -34,6 +34,7 @@ training:
   learning_rate: 0.0001
   num_epochs: 200
   save_steps: 500  # 每多少步保存一次
+  save_every_n_epochs: 10  # 每 10 个 epoch 保存一次（节省磁盘空间）
   logging_steps: 50  # 每多少步记录一次日志
   mixed_precision: "bf16"  # 混合精度训练（BF16更稳定，RTX 4090支持）
   max_grad_norm: 1.0  # 梯度裁剪
@@ -41,7 +42,7 @@ training:
   ema_decay: 0.9999
   num_workers: 8  # 增加数据加载线程数
   prefetch_factor: 4  # 增加预取因子
-  compile_model: true  # 使用 PyTorch 2.0+ 编译优化
+  compile_model: false  # 使用 PyTorch 2.0+ 编译优化
 
 # 扩散调度器配置
 scheduler:
