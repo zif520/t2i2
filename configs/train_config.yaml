@@ -2,8 +2,8 @@
 
 # 数据配置
 data:
-  dataset_name: "coco"  # 或 "custom"
-  dataset_path: "./data"  # 自定义数据集路径
+  dataset_name: "cub"  # 使用 CUB 数据集: "coco", "cub", 或 "custom"
+  dataset_path: "./data/cub_subset"  # CUB 数据集路径
   image_size: 256  # 图像尺寸（256 可以支持更大批次，充分利用显存）
   num_samples: 5000  # 使用的小数据集样本数
   train_split: 0.9  # 训练集比例

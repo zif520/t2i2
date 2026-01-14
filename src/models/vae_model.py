@@ -6,8 +6,9 @@ import torch.nn as nn
 from diffusers import AutoencoderKL
 from typing import Optional
 
-# 设置下载超时（通过环境变量）
-os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "300")  # 增加到 300 秒
+# 设置下载超时（通过环境变量，增加到 600 秒）
+os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "600")
+os.environ.setdefault("REQUESTS_TIMEOUT", "600")  # 增加到 300 秒
 
 
 class VAEEncoder:

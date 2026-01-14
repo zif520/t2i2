@@ -142,7 +142,14 @@ def main():
 
     # 设置下载超时（通过环境变量或 download_config）
     import os
-    os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "300")  # 增加到 300 秒（5分钟）
+    # 设置 Hugging Face 下载超时（增加到 600 秒）
+    os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "600")
+    os.environ.setdefault("REQUESTS_TIMEOUT", "600")
+    
+    # 如果设置了代理环境变量，使用代理
+    if "HTTP_PROXY" in os.environ or "HTTPS_PROXY" in os.environ:
+        print(f"使用代理: HTTP_PROXY={os.environ.get('HTTP_PROXY', '未设置')}, "
+              f"HTTPS_PROXY={os.environ.get('HTTPS_PROXY', '未设置')}")
     
     text_encoder = CLIPTextModel.from_pretrained(text_encoder_name)
 
