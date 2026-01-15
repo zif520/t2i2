@@ -12,32 +12,29 @@
 
 ## 📚 文档
 
-完整的教程文档位于 `docs/` 目录：
+**完整的系统化文档位于 `docs/` 目录，与代码完全同步！**
 
-### 🎯 核心教程（推荐从这里开始）
+### 🎯 快速开始
 
-- **[完整教程](./docs/00-完整教程.md)** ⭐ - 完整学习路径，包含所有内容
-- **[快速开始](./docs/QUICK_START.md)** ⭐ - 5分钟快速上手
+- **[文档索引](./docs/README.md)** ⭐ - 文档总导航，从这里开始
+- **[快速开始](./docs/01-快速开始.md)** ⭐ - 5分钟快速上手
 
-### 📖 详细文档
+### 📖 核心教程（系统化，与代码完全匹配）
 
-- [文档首页](./docs/README.md) - 文档导航
-- [01. 入门指南](./docs/01-入门指南.md) - 了解文生图和 DiT 基础概念
-- [02. 环境配置](./docs/02-环境配置.md) - 安装和配置开发环境
-- [03. 数据准备](./docs/03-数据准备.md) - 准备训练数据集
-- [04. 模型架构](./docs/04-模型架构.md) - 深入理解 DiT 模型结构
-- [05. 训练流程](./docs/05-训练流程.md) - 完整的训练步骤和技巧
-- [06. 推理使用](./docs/06-推理使用.md) - 使用训练好的模型生成图像
-- [07. 常见问题](./docs/07-常见问题.md) - FAQ 和故障排除
-- [08. 进阶学习](./docs/08-进阶学习.md) - 进阶内容和扩展方向
+1. **[01. 快速开始](./docs/01-快速开始.md)** - 5分钟运行第一个示例
+2. **[02. 安装配置](./docs/02-安装配置.md)** - 环境搭建和依赖安装
+3. **[03. 数据准备](./docs/03-数据准备.md)** - 准备训练数据（COCO、CUB、自定义）
+4. **[04. 模型架构](./docs/04-模型架构.md)** - 深入理解 DiT 模型结构
+5. **[05. 训练指南](./docs/05-训练指南.md)** - 完整的训练流程和技巧
+6. **[06. 推理使用](./docs/06-推理使用.md)** - 使用训练好的模型生成图像
 
-### 📊 性能优化文档
+### 📋 参考文档
 
-- [性能优化报告](./PERFORMANCE_OPTIMIZATION.md) - 性能优化详细说明
-- [优化总结](./OPTIMIZATION_SUMMARY.md) - 优化总结
-- [GPU 优化说明](./GPU_OPTIMIZATION.md) - GPU 利用率优化
-- [训练指南](./docs/TRAINING_GUIDE.md) - Epoch 数选择指南
-- [精度指南](./docs/PRECISION_GUIDE.md) - FP16 vs BF16
+7. **[07. 配置参考](./docs/07-配置参考.md)** - 配置文件详解
+8. **[08. 故障排除](./docs/08-故障排除.md)** - 常见问题和解决方案
+9. **[09. API 参考](./docs/09-API参考.md)** - 代码 API 文档
+
+**所有文档都与代码完全匹配，确保示例和说明的准确性！**
 
 ## 🚀 快速开始
 
@@ -47,25 +44,25 @@
 # 1. 安装依赖
 pip install -r requirements.txt
 
-# 2. 准备测试数据
-python src/scripts/prepare_data.py \
-    --type coco \
-    --output ./data/test_data \
-    --num_samples 100
+# 2. 准备数据（以 CUB 为例）
+python src/scripts/prepare_cub_from_kaggle.py \
+    --kaggle_dir ./data/cub_raw/cub2002011 \
+    --output ./data/cub_subset \
+    --num_samples 5000
 
 # 3. 开始训练
 python src/scripts/train.py --config configs/train_config.yaml
 
 # 4. 生成图像
 python src/scripts/inference.py \
-    --checkpoint ./outputs/checkpoint-5000 \
-    --prompt "a cat sitting on a chair"
+    --checkpoint ./outputs/checkpoint-epoch-10 \
+    --prompt "a bird with colorful feathers"
 ```
 
 **详细教程：**
-- 📖 [完整教程](./docs/00-完整教程.md) - 系统学习路径
-- ⚡ [快速开始](./docs/QUICK_START.md) - 5分钟快速上手
-- 📚 [文档索引](./docs/INDEX.md) - 所有文档导航
+- 📖 [文档索引](./docs/README.md) - 完整文档导航
+- ⚡ [快速开始](./docs/01-快速开始.md) - 5分钟快速上手
+- 📚 [所有教程](./docs/) - 系统化教程体系
 
 ## 📁 项目结构
 
@@ -168,16 +165,14 @@ t2i2/
 
 ## 🐛 常见问题
 
-遇到问题？请查看 [常见问题](./docs/07-常见问题.md) 文档。
+遇到问题？请查看 **[故障排除文档](./docs/08-故障排除.md)**，包含所有已知问题和解决方案。
 
 常见问题包括：
-- CUDA 不可用
-- 显存不足
-- 训练速度慢
-- **生成质量差** - 查看 [图像质量改进](./docs/IMAGE_QUALITY_IMPROVEMENT.md) 或 [快速改进](./QUICK_IMPROVEMENT.md)
-- **断点续传** - 查看 [断点续传指南](./docs/RESUME_TRAINING.md)
-- **磁盘空间不足** - 查看 [磁盘空间问题](./docs/DISK_SPACE_ISSUE.md)
-- **临时目录错误** - 查看 [临时目录修复](./docs/TEMP_DIR_FIX.md)
+- 网络问题（下载超时）→ [故障排除 - 网络问题](./docs/08-故障排除.md#网络问题)
+- 显存问题（OOM）→ [故障排除 - 显存问题](./docs/08-故障排除.md#显存问题)
+- 数据问题 → [故障排除 - 数据问题](./docs/08-故障排除.md#数据问题)
+- 训练问题 → [故障排除 - 训练问题](./docs/08-故障排除.md#训练问题)
+- 推理问题 → [故障排除 - 推理问题](./docs/08-故障排除.md#推理问题)
 
 ## 📝 许可证
 
@@ -197,9 +192,9 @@ t2i2/
 
 ## 🎯 下一步
 
-1. 阅读 [文档首页](./docs/README.md) 开始学习
-2. 按照 [快速开始](#-快速开始) 运行第一个示例
-3. 探索 [进阶学习](./docs/08-进阶学习.md) 内容
+1. 阅读 [文档索引](./docs/README.md) 了解文档结构
+2. 按照 [快速开始](./docs/01-快速开始.md) 运行第一个示例
+3. 系统学习 [核心教程](./docs/) 内容
 
 ---
 
